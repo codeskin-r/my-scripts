@@ -1,0 +1,24 @@
+#!/bin/bash
+
+# Script de lanzamiento optimizado para juegos de Windows en Linux (Intel GPU)
+# Uso: ./launch-game.sh "/ruta/al/juego/Game.exe"
+
+if [ -z "$1" ]; then
+    echo "Uso: $0 /ruta/al/juego/Game.exe"
+    exit 1
+fi
+
+JUEGO="$1"
+
+# Activa DXVK para traducir DirectX 10/11 → Vulkan
+export DXVK_LOG_LEVEL=none
+export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/intel_icd.x86_64.json
+export VK_LAYER_PATH=/usr/share/vulkan/explicit_layer.d
+
+# Usa Gamemode (si está instalado) y Mangohud para monitorizar rendimiento
+if command -v gamemoderun &>/dev/null; then
+    gamemoderun mangohud wine "$JUEGO"
+else
+    mangohud wine "$JUEGO"
+fi
+

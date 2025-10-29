@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+
+VIDEOS_DIR="$HOME/Downloads"
+OUTPUT_DIR="$HOME/Videos/Convertidos"
+mkdir -p "$OUTPUT_DIR"
+
+# Selector
+if command -v rofi >/dev/null 2>&1; then
+    MENU_CMD="rofi -dmenu -p"
+elif command -v fzf >/dev/null 2>&1; then
+    MENU_CMD="fzf --prompt"
+else
+    echo "❌ Instalá rofi o fzf."
+    exit 1
+fi
+
+VIDEO_FILE=$(find "$VIDEOS_DIR" -type f \( -iname "*.mp4" -o -iname "*.mov" -o -iname "*.mkv" -o -iname "*.avi" \) | $MENU_CMD "📂 Elegí el video:")
+[[ -z "$VIDEO_FILE" ]] && { echo "❌ No seleccionaste video."; exit 1; }
+
+DEFAULT_NAME=$(basename "${VIDEO_FILE%.*}_convertido")
+OUTPUT_NAME=$(echo "$DEFAULT_NAME" | $MENU_CMD "💾 Nombre de salida (sin .mp4):")
+[[ -z "$OUTPUT_NAME" ]] && OUTPUT_NAME="$DEFAULT_NAME"
+OUTPUT_FILE="$OUTPUT_DIR/${OUTPUT_NAME}.mp4"
+
+ROT_OPTION=$(echo -e "1) Ninguna\n2) 90° (horario)\n3) 180°\n4) 270° (antihorario)" | $MENU_CMD "🔄 Rotación:")
+case "$ROT_OPTION" in
+*1*) ROTATE_FILTER="" ;;
+*2*) ROTATE_FILTER="transpose=1" ;;
+*3*) ROTATE_FILTER="transpose=2,transpose=2" ;;
+*4*) ROTATE_FILTER="transpose=2" ;;
+*) ROTATE_FILTER="" ;;
+esac
+
+# Ejecutar FFmpeg seguro
+if [[ -n "$ROTATE_FILTER" ]]; then
+    ffmpeg -hide_banner -y -i "$VIDEO_FILE" -vf "$ROTATE_FILTER" -c:v libx264 -preset fast -crf 23 -c:a aac -b:a 192k "$OUTPUT_FILE"
+else
+    ffmpeg -hide_banner -y -i "$VIDEO_FILE" -c:v libx264 -preset fast -crf 23 -c:a aac -b:a 192k "$OUTPUT_FILE"
+fi
+
+# Resultado
+if [[ $? -eq 0 ]]; then
+    notify-send "✅ Conversión completa" "Archivo: ${OUTPUT_FILE}"
+    echo "✅ Conversión completa: ${OUTPUT_FILE}"
+else
+    notify-send "❌ Error en la conversión" "Revisá la terminal."
+    echo "❌ Error durante la conversión."
+fi
+
